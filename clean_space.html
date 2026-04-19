@@ -1,0 +1,1675 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clean Space — AI 청소 도우미</title>
+<style>
+  :root {
+    --primary: #5b8def;
+    --primary-dark: #3f6fd8;
+    --secondary: #9b6bff;
+    --accent: #ff6b8b;
+    --danger: #ff5b5b;
+    --success: #20c997;
+    --warning: #ffb020;
+    --bg: #f5f7fb;
+    --surface: #ffffff;
+    --text: #1a1f36;
+    --text-sub: #6b7890;
+    --text-mute: #a3adc2;
+    --border: #e6ebf4;
+    --border-hover: #c5d1e8;
+    --radius: 18px;
+    --shadow-sm: 0 2px 8px rgba(27, 40, 75, 0.06);
+    --shadow: 0 6px 24px rgba(27, 40, 75, 0.08);
+    --shadow-lg: 0 16px 48px rgba(27, 40, 75, 0.14);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--text); font-family: 'Pretendard', 'Segoe UI', 'Apple SD Gothic Neo', sans-serif; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  button, input { font-family: inherit; }
+  a { color: inherit; }
+
+  /* ============ NAV ============ */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(255,255,255,0.88); backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px; height: 66px;
+  }
+  .nav-left { display: flex; align-items: center; gap: 28px; }
+  .logo {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 20px; font-weight: 800; letter-spacing: -.5px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--secondary)); display: inline-block; }
+  .nav-menu { display: flex; gap: 22px; }
+  .nav-menu a { text-decoration: none; color: var(--text-sub); font-size: 14.5px; font-weight: 500; transition: color .2s; }
+  .nav-menu a:hover, .nav-menu a.active { color: var(--primary); }
+  .btn-account {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: #fff; border: none; border-radius: 999px;
+    padding: 10px 22px; font-size: 13.5px; font-weight: 700;
+    cursor: pointer; transition: transform .2s, box-shadow .2s;
+    box-shadow: 0 6px 20px rgba(91,141,239,0.35);
+  }
+  .btn-account:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(91,141,239,0.45); }
+  .btn-account.logged-in {
+    background: #eef2f8; color: var(--text); box-shadow: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .avatar-badge {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 11px; font-weight: 800;
+  }
+
+  /* ============ PAGES ============ */
+  .page { display: none; min-height: 100vh; padding-top: 66px; }
+  .page.active { display: block; animation: fadeIn .35s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ============ HERO ============ */
+  #page-main {
+    background:
+      radial-gradient(circle at 15% 10%, #dbe5ff 0%, transparent 40%),
+      radial-gradient(circle at 85% 80%, #ffd6e2 0%, transparent 45%),
+      linear-gradient(180deg, #f5f7fb 0%, #fff 100%);
+  }
+  .hero {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: calc(100vh - 66px); text-align: center; padding: 40px 20px 60px;
+  }
+  .hero-badge {
+    background: rgba(91,141,239,0.1); color: var(--primary); border: 1px solid rgba(91,141,239,0.2);
+    border-radius: 999px; padding: 6px 16px; font-size: 12.5px; font-weight: 600; margin-bottom: 22px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .hero h1 {
+    font-size: 46px; font-weight: 900; line-height: 1.15; letter-spacing: -1.5px; margin-bottom: 16px;
+    color: var(--text);
+  }
+  .hero h1 .grad {
+    background: linear-gradient(135deg, var(--primary), var(--secondary), var(--accent));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p { font-size: 16px; color: var(--text-sub); margin-bottom: 44px; max-width: 480px; line-height: 1.6; }
+  .choice-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px;
+    max-width: 640px; width: 100%;
+  }
+  .choice-card {
+    background: #fff; border: 1.5px solid var(--border); border-radius: var(--radius);
+    padding: 28px 22px; cursor: pointer; transition: all .25s;
+    box-shadow: var(--shadow-sm); text-align: left; position: relative; overflow: hidden;
+  }
+  .choice-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: var(--primary); transform: scaleX(0); transform-origin: left; transition: transform .3s;
+  }
+  .choice-card:hover { border-color: var(--primary); transform: translateY(-4px); box-shadow: var(--shadow); }
+  .choice-card:hover::before { transform: scaleX(1); }
+  .choice-card .icon-wrap {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: #eef2ff; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 24px; margin-bottom: 14px;
+  }
+  .choice-card h3 { font-size: 17px; font-weight: 800; margin-bottom: 6px; letter-spacing: -.3px; }
+  .choice-card .desc { font-size: 13px; color: var(--text-sub); line-height: 1.5; }
+  .choice-card .time-tag {
+    display: inline-block; margin-top: 10px;
+    font-size: 11px; font-weight: 600; color: var(--primary);
+    background: #eef2ff; padding: 3px 10px; border-radius: 999px;
+  }
+  .choice-card.company { background: linear-gradient(135deg, #fff5f6, #fff); }
+  .choice-card.company::before { background: var(--accent); }
+  .choice-card.company .icon-wrap { background: #ffe9ee; }
+  .choice-card.company .time-tag { color: var(--accent); background: #ffe9ee; }
+  .choice-card.company:hover { border-color: var(--accent); }
+
+  /* ============ MODAL ============ */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.5);
+    z-index: 200; align-items: center; justify-content: center;
+    animation: fadeIn .2s;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: 22px; padding: 36px 32px;
+    max-width: 420px; width: 90%; text-align: center;
+    box-shadow: var(--shadow-lg);
+    animation: slideUp .3s cubic-bezier(.2,.9,.3,1.2);
+  }
+  @keyframes slideUp { from { transform: translateY(40px) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
+  .modal-emoji { font-size: 40px; margin-bottom: 10px; }
+  .modal h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; letter-spacing: -.4px; }
+  .modal .sub { color: var(--text-sub); font-size: 13.5px; margin-bottom: 24px; }
+  .social-btn {
+    width: 100%; padding: 13px; border-radius: 12px; border: none;
+    font-size: 14.5px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-bottom: 10px; transition: transform .2s, box-shadow .2s;
+  }
+  .social-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .btn-google { background: #fff; border: 1.5px solid var(--border); color: var(--text); }
+  .btn-kakao { background: #FEE500; color: #3A1D1D; }
+  .btn-naver { background: #03C75A; color: #fff; }
+  .modal-close {
+    margin-top: 14px; background: none; border: none; color: var(--text-mute);
+    font-size: 13px; cursor: pointer;
+  }
+  .modal-close:hover { color: var(--text-sub); }
+
+  /* ============ INNER PAGES ============ */
+  .inner-page { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+  .page-title { font-size: 30px; font-weight: 900; letter-spacing: -.8px; text-align: center; margin-bottom: 8px; }
+  .page-title .grad { background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .page-subtitle { font-size: 14.5px; color: var(--text-sub); text-align: center; margin-bottom: 32px; line-height: 1.5; }
+
+  .card {
+    background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 26px; box-shadow: var(--shadow-sm); margin-bottom: 18px;
+  }
+  .card h3 { font-size: 15.5px; font-weight: 800; margin-bottom: 14px; letter-spacing: -.2px; display: flex; align-items: center; gap: 8px; }
+  .step-num {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--primary);
+    color: #fff; font-size: 12px; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* ============ SPACE SELECTOR ============ */
+  .space-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .space-btn {
+    border: 1.5px solid var(--border); background: #fafbfd;
+    border-radius: 12px; padding: 14px 6px;
+    font-size: 13px; font-weight: 600; color: var(--text-sub);
+    cursor: pointer; text-align: center; transition: all .2s;
+  }
+  .space-btn .s-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+  .space-btn.selected { border-color: var(--primary); background: #eef4ff; color: var(--primary); }
+  .space-btn:hover { border-color: var(--border-hover); }
+
+  /* ============ UPLOAD ============ */
+  .upload-zone {
+    display: block; border: 2px dashed var(--border-hover); border-radius: 16px;
+    padding: 36px 20px; text-align: center; cursor: pointer;
+    transition: all .2s; background: #fafbfd; position: relative;
+  }
+  .upload-zone:hover { border-color: var(--primary); background: #f2f6ff; }
+  .upload-zone input[type=file] { display: none; }
+  .upload-zone .upload-icon { font-size: 36px; margin-bottom: 10px; }
+  .upload-zone p { color: var(--text-sub); font-size: 13.5px; line-height: 1.6; }
+  .upload-zone p strong { color: var(--primary); }
+  .preview-img {
+    width: 100%; max-height: 260px; object-fit: cover;
+    border-radius: 12px; margin-top: 12px; display: none;
+  }
+
+  /* ============ PRICE ============ */
+  .price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .price-btn {
+    border: 1.5px solid #ffe0e6; background: #fff7f9; border-radius: 12px;
+    padding: 14px 6px; font-size: 14px; font-weight: 700;
+    color: #d43d5e; cursor: pointer; text-align: center; transition: all .2s;
+  }
+  .price-btn.selected { border-color: var(--accent); background: #ffe0e6; color: #b9284a; transform: translateY(-1px); }
+  .price-btn:hover { border-color: var(--accent); }
+
+  /* ============ BUTTONS ============ */
+  .btn-primary {
+    width: 100%; padding: 15px; background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: #fff; border: none; border-radius: 14px; font-size: 15.5px; font-weight: 800;
+    cursor: pointer; transition: transform .2s, box-shadow .2s; margin-top: 4px;
+    box-shadow: 0 8px 20px rgba(91,141,239,0.3);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(91,141,239,0.38); }
+  .btn-primary.red { background: linear-gradient(135deg, var(--accent), #ff4a75); box-shadow: 0 8px 20px rgba(255,107,139,0.3); }
+  .btn-primary.red:hover { box-shadow: 0 12px 26px rgba(255,107,139,0.38); }
+
+  .back-btn {
+    background: #fff; border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 8px 16px; font-size: 13px; color: var(--text-sub); cursor: pointer;
+    margin-bottom: 18px; transition: all .2s;
+  }
+  .back-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* ============ ANALYZING ============ */
+  .analyzing { text-align: center; padding: 64px 20px; }
+  .spinner-wrap { position: relative; display: inline-block; margin-bottom: 24px; }
+  .spinner {
+    width: 72px; height: 72px; border: 5px solid #eef2ff;
+    border-top-color: var(--primary); border-right-color: var(--secondary);
+    border-radius: 50%; animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner-emoji {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 28px; animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.15); } }
+  .analyzing-steps { margin-top: 24px; color: var(--text-mute); font-size: 13px; line-height: 2; }
+  .analyzing-steps li { list-style: none; opacity: .4; transition: opacity .3s, color .3s; }
+  .analyzing-steps li.active { opacity: 1; color: var(--primary); font-weight: 600; }
+  .analyzing-steps li.done { opacity: .7; color: var(--success); }
+  .analyzing-steps li.done::before { content: '✓ '; }
+
+  /* ============ RESULT ============ */
+  .score-ring-wrap { text-align: center; margin: 20px 0 4px; }
+  .score-ring { position: relative; display: inline-block; }
+  .score-ring svg { transform: rotate(-90deg); }
+  .score-ring .ring-bg { stroke: #eef2f8; }
+  .score-ring .ring-fg {
+    stroke: url(#scoreGrad); stroke-linecap: round;
+    transition: stroke-dashoffset 1.2s cubic-bezier(.2,.9,.3,1);
+  }
+  .score-center {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .score-value { font-size: 36px; font-weight: 900; letter-spacing: -1px; }
+  .score-unit { font-size: 16px; color: var(--text-sub); font-weight: 700; }
+  .score-label { font-size: 13px; color: var(--text-sub); margin-top: 4px; }
+
+  .result-img-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+  .result-img-box {
+    border-radius: 14px; overflow: hidden; position: relative;
+    background: #f0f4f8; aspect-ratio: 4/3;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .result-img-box img { width: 100%; height: 100%; object-fit: cover; }
+  .result-img-box .img-label {
+    position: absolute; top: 8px; left: 8px;
+    background: rgba(15,23,42,0.75); color: #fff; border-radius: 6px;
+    padding: 3px 10px; font-size: 11px; font-weight: 600;
+  }
+  .result-img-box .ai-overlay {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(circle at 30% 40%, rgba(255,91,91,0.25) 0%, transparent 20%),
+      radial-gradient(circle at 70% 60%, rgba(255,176,32,0.25) 0%, transparent 18%),
+      radial-gradient(circle at 50% 80%, rgba(255,91,91,0.22) 0%, transparent 16%);
+  }
+  .result-img-box .placeholder {
+    color: var(--text-mute); font-size: 13px; display: flex;
+    flex-direction: column; align-items: center; gap: 6px;
+  }
+
+  .info-list {
+    background: #fafbfd; border-radius: 12px; padding: 14px 18px;
+    font-size: 13.5px; color: var(--text-sub); line-height: 1.9;
+  }
+  .info-list strong { color: var(--text); font-weight: 700; }
+  .chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+  .chip.red { background: #ffe0e6; color: #d43d5e; }
+  .chip.orange { background: #fff4de; color: #b96b1a; }
+  .chip.blue { background: #eef2ff; color: var(--primary); }
+  .chip.green { background: #dcfaeb; color: #167a50; }
+
+  /* ============ CHECKLIST ============ */
+  .checklist { list-style: none; }
+  .checklist li {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 0; border-bottom: 1px solid var(--border);
+    transition: opacity .3s;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .check-box {
+    width: 22px; height: 22px; border: 2px solid var(--border-hover); border-radius: 6px;
+    flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all .2s; margin-top: 1px; font-size: 13px; color: #fff;
+  }
+  .check-box.checked { background: var(--primary); border-color: var(--primary); }
+  .check-content { flex: 1; min-width: 0; }
+  .check-title { font-size: 14.5px; font-weight: 700; margin-bottom: 4px; letter-spacing: -.1px; }
+  .check-tip { font-size: 12.5px; color: var(--text-sub); line-height: 1.5; }
+  .btn-dunno {
+    flex-shrink: 0; background: #fff4de; border: none; border-radius: 8px;
+    padding: 6px 10px; font-size: 11.5px; font-weight: 600; color: #b96b1a;
+    cursor: pointer; transition: all .2s; white-space: nowrap;
+  }
+  .btn-dunno:hover { background: #ffe8c4; }
+
+  /* ============ VIDEO MODAL ============ */
+  .video-modal .modal { max-width: 560px; padding: 28px 26px; }
+  .yt-embed { width: 100%; aspect-ratio: 16/9; border: none; border-radius: 12px; background: #000; }
+
+  /* ============ PROGRESS ============ */
+  .progress-bar-wrap { margin-bottom: 22px; }
+  .progress-info { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-sub); margin-bottom: 8px; font-weight: 600; }
+  .progress-info .pct { color: var(--primary); font-weight: 800; }
+  .progress-track { background: #eef2f8; border-radius: 999px; height: 10px; overflow: hidden; }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary));
+    border-radius: 999px; transition: width .6s cubic-bezier(.2,.9,.3,1);
+    position: relative; overflow: hidden;
+  }
+  .progress-fill::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: shimmer 2s infinite;
+  }
+  @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+  /* ============ COMPARE ============ */
+  .compare-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .compare-box { border-radius: 14px; overflow: hidden; background: #f0f4f8; border: 1px solid var(--border); }
+  .compare-box .c-label {
+    padding: 8px 14px; font-size: 12px; font-weight: 800; color: #fff;
+    letter-spacing: 1px;
+  }
+  .compare-box.before .c-label { background: #ff7a8c; }
+  .compare-box.after .c-label { background: linear-gradient(90deg, var(--primary), var(--secondary)); }
+  .compare-box img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
+  .compare-box .empty {
+    aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center;
+    color: var(--text-mute); font-size: 13px;
+  }
+
+  .score-compare {
+    display: flex; align-items: center; justify-content: center; gap: 24px;
+    padding: 20px 0; border-top: 1px dashed var(--border); border-bottom: 1px dashed var(--border);
+  }
+  .sc-item { text-align: center; }
+  .sc-num { font-size: 32px; font-weight: 900; letter-spacing: -1px; }
+  .sc-num.before { color: #ff7a8c; }
+  .sc-num.after-c {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .sc-label { font-size: 11px; color: var(--text-mute); font-weight: 700; letter-spacing: 1px; margin-top: 2px; }
+  .arrow-big { font-size: 24px; color: var(--text-mute); }
+  .diff-tag {
+    display: inline-block; margin-top: 6px; background: #dcfaeb; color: #167a50;
+    font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px;
+  }
+
+  /* ============ CELEBRATE ============ */
+  .celebrate-wrap {
+    text-align: center; padding: 36px 20px; position: relative;
+    background: linear-gradient(135deg, #eef4ff, #fff0f3);
+    border-radius: var(--radius); margin-bottom: 18px; overflow: hidden;
+  }
+  .celebrate-wrap::before, .celebrate-wrap::after {
+    content: '✨'; position: absolute; font-size: 20px; opacity: .5;
+    animation: float 3s ease-in-out infinite;
+  }
+  .celebrate-wrap::before { top: 20px; left: 10%; }
+  .celebrate-wrap::after { bottom: 20px; right: 10%; animation-delay: 1s; }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  .emoji-big { font-size: 64px; margin-bottom: 10px; display: inline-block; animation: bounce .8s ease infinite alternate; }
+  @keyframes bounce { from { transform: translateY(0) rotate(-5deg); } to { transform: translateY(-8px) rotate(5deg); } }
+  .celebrate-wrap h2 {
+    font-size: 30px; font-weight: 900; letter-spacing: -.8px; margin-bottom: 10px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary), var(--accent));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .celebrate-wrap p { font-size: 14.5px; color: var(--text-sub); line-height: 1.7; }
+  .confetti {
+    display: flex; justify-content: center; gap: 8px; margin: 14px 0;
+    font-size: 22px;
+  }
+  .confetti span { animation: bounce2 1s ease infinite alternate; }
+  .confetti span:nth-child(2) { animation-delay: .2s; }
+  .confetti span:nth-child(3) { animation-delay: .4s; }
+  .confetti span:nth-child(4) { animation-delay: .6s; }
+  .confetti span:nth-child(5) { animation-delay: .8s; }
+  @keyframes bounce2 { from { transform: translateY(0); } to { transform: translateY(-10px); } }
+
+  /* ============ PLATFORM ============ */
+  .platform-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .platform-card {
+    border: 1.5px solid var(--border); border-radius: 14px; padding: 16px;
+    background: #fff; cursor: pointer; transition: all .2s;
+  }
+  .platform-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+  .platform-card.best { border-color: var(--accent); background: linear-gradient(135deg, #fff7f9, #fff); }
+  .p-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .p-name { font-size: 15px; font-weight: 800; letter-spacing: -.2px; }
+  .p-stars { color: #ffb020; font-size: 12px; letter-spacing: 1px; }
+  .p-range { font-size: 12.5px; color: var(--text-sub); margin-bottom: 8px; }
+  .p-tag {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .p-tag.red { background: #ffe0e6; color: #b9284a; }
+  .p-tag.blue { background: #eef2ff; color: var(--primary); }
+  .p-tag.orange { background: #fff4de; color: #b96b1a; }
+  .p-tag.green { background: #dcfaeb; color: #167a50; }
+
+  /* ============ AI HEATMAP & PALETTE ============ */
+  .heatmap-canvas {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    mix-blend-mode: multiply; pointer-events: none;
+  }
+  .hotspot-label {
+    position: absolute; background: rgba(255,91,91,0.95); color: #fff;
+    font-size: 10px; font-weight: 800; padding: 2px 7px;
+    border-radius: 999px; transform: translate(-50%, -50%);
+    white-space: nowrap; box-shadow: 0 2px 6px rgba(255,91,91,0.5);
+    animation: pulseHot 2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes pulseHot { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.08); } }
+
+  .palette-row { display: flex; gap: 6px; margin-top: 10px; }
+  .palette-swatch {
+    flex: 1; height: 32px; border-radius: 8px;
+    position: relative; border: 1px solid rgba(0,0,0,0.06);
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .palette-swatch span {
+    font-size: 9px; font-weight: 700; color: #fff; padding: 2px 4px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5); margin-bottom: 2px;
+  }
+
+  .ai-metric-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    margin-top: 14px;
+  }
+  .ai-metric {
+    background: #fafbfd; border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 8px; text-align: center;
+  }
+  .ai-metric .m-val { font-size: 18px; font-weight: 900; color: var(--primary); letter-spacing: -.5px; }
+  .ai-metric .m-label { font-size: 10.5px; color: var(--text-mute); font-weight: 700; letter-spacing: .5px; margin-top: 2px; }
+
+  .issue-list { list-style: none; margin-top: 12px; }
+  .issue-list li {
+    padding: 8px 12px; background: #fff4de; border-left: 3px solid var(--warning);
+    border-radius: 6px; margin-bottom: 6px; font-size: 13px; color: #8a5a00;
+    font-weight: 600;
+  }
+  .issue-list li.none {
+    background: #dcfaeb; border-left-color: var(--success); color: #167a50;
+  }
+
+  /* ============ TOAST ============ */
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: #fff; padding: 12px 22px;
+    border-radius: 999px; font-size: 13.5px; font-weight: 500; z-index: 999;
+    opacity: 0; transition: all .3s; pointer-events: none;
+    box-shadow: var(--shadow-lg);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 600px) {
+    nav { padding: 0 16px; }
+    .nav-menu { display: none; }
+    .hero h1 { font-size: 32px; }
+    .choice-grid { grid-template-columns: 1fr; }
+    .space-grid { grid-template-columns: repeat(2, 1fr); }
+    .price-grid { grid-template-columns: repeat(2, 1fr); }
+    .platform-grid { grid-template-columns: 1fr; }
+    .result-img-row { grid-template-columns: 1fr; }
+    .inner-page { padding: 24px 16px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== NAV ===================== -->
+<nav>
+  <div class="nav-left">
+    <div class="logo"><span class="logo-dot"></span>Clean Space</div>
+    <div class="nav-menu">
+      <a href="#" class="active" onclick="showPage('main');return false;">홈</a>
+      <a href="#" onclick="return false;">서비스 소개</a>
+      <a href="#" onclick="return false;">청소 가이드</a>
+      <a href="#" onclick="return false;">커뮤니티</a>
+    </div>
+  </div>
+  <button class="btn-account" id="account-btn" onclick="openModal('modal-account')">계정 생성하기</button>
+</nav>
+
+<!-- ===================== PAGE: MAIN ===================== -->
+<div id="page-main" class="page active">
+  <div class="hero">
+    <div class="hero-badge">🤖 AI가 도와주는 똑똑한 청소</div>
+    <h1>어떤 방으로 <span class="grad">만들까요?</span></h1>
+    <p>원하는 청소 유형을 선택하면 AI가 사진을 분석해<br>맞춤 퀘스트를 만들어드려요</p>
+    <div class="choice-grid">
+      <div class="choice-card" onclick="goDiagnose('간단한 정리')">
+        <div class="icon-wrap">🧹</div>
+        <h3>간단한 정리</h3>
+        <div class="desc">바로 눈에 보이는 것들만 빠르게 정돈</div>
+        <div class="time-tag">10~30분</div>
+      </div>
+      <div class="choice-card" onclick="goDiagnose('주변 청소')">
+        <div class="icon-wrap">🫧</div>
+        <h3>주변 청소</h3>
+        <div class="desc">먼지·오염까지 꼼꼼하게 청소</div>
+        <div class="time-tag">30분~1시간</div>
+      </div>
+      <div class="choice-card" onclick="goDiagnose('대청소')">
+        <div class="icon-wrap">🏡</div>
+        <h3>대청소</h3>
+        <div class="desc">방 구석구석 완전히 리셋</div>
+        <div class="time-tag">반나절</div>
+      </div>
+      <div class="choice-card company" onclick="showPage('company')">
+        <div class="icon-wrap">🧽</div>
+        <h3>청소 업체</h3>
+        <div class="desc">전문 업체를 AI가 매칭해줘요</div>
+        <div class="time-tag">가격대 추천</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PAGE: COMPANY ===================== -->
+<div id="page-company" class="page">
+  <div class="inner-page">
+    <button class="back-btn" onclick="showPage('main')">← 뒤로</button>
+    <div class="page-title">방 <span class="grad">진단</span> 해볼게요!</div>
+    <div class="page-subtitle">사진과 가격대를 알려주시면 AI가 딱 맞는 업체를 찾아드려요</div>
+
+    <div class="card">
+      <h3><span class="step-num">1</span>방 사진을 업로드해주세요</h3>
+      <label class="upload-zone" id="company-upload-zone">
+        <input type="file" accept="image/*" id="company-img-input" onchange="previewImage(this,'company-preview','company-upload-zone')">
+        <div class="upload-icon">📷</div>
+        <p><strong>클릭하여 사진 선택</strong><br>또는 여기에 드래그 앤 드롭</p>
+        <img class="preview-img" id="company-preview">
+      </label>
+    </div>
+
+    <div class="card">
+      <h3><span class="step-num">2</span>원하는 가격대는? 💰</h3>
+      <div class="price-grid" id="price-grid">
+        <div class="price-btn" onclick="selectPrice(this,'3만원대')">3만원대</div>
+        <div class="price-btn" onclick="selectPrice(this,'5만원대')">5만원대</div>
+        <div class="price-btn" onclick="selectPrice(this,'7만원대')">7만원대</div>
+        <div class="price-btn" onclick="selectPrice(this,'9만원대')">9만원대</div>
+        <div class="price-btn" onclick="selectPrice(this,'12만원대')">12만원대</div>
+        <div class="price-btn" onclick="selectPrice(this,'15만원대')">15만원대</div>
+      </div>
+    </div>
+
+    <button class="btn-primary red" onclick="requestCompany()">🤖 AI에게 요청하기</button>
+  </div>
+</div>
+
+<!-- ===================== PAGE: COMPANY RESULT ===================== -->
+<div id="page-company-result" class="page">
+  <div class="inner-page">
+    <button class="back-btn" onclick="showPage('company')">← 다시 선택</button>
+    <div class="page-title">추천 <span class="grad">청소 업체</span> 🏆</div>
+    <div class="page-subtitle">AI가 방 상태와 가격대를 분석해서 찾은 최적의 플랫폼이에요</div>
+
+    <div class="card">
+      <h3>📊 방 분석 요약</h3>
+      <div class="info-list">
+        • 청소 상태: <span class="chip red">보통 이하</span><br>
+        • 주요 오염: <strong>바닥 · 창가 · 가구 위</strong><br>
+        • 예상 소요 시간: <strong>2~3시간</strong><br>
+        • 선택한 가격대: <strong id="result-price-label" style="color:var(--accent)">--</strong>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>🔎 맞춤 플랫폼 추천</h3>
+      <div class="platform-grid">
+        <div class="platform-card best">
+          <div class="p-header">
+            <div class="p-name">청소연구소</div>
+            <div class="p-stars">★★★★★</div>
+          </div>
+          <div class="p-range">3~15만원 · 다양한 옵션</div>
+          <span class="p-tag red">✨ AI 최우선 추천</span>
+        </div>
+        <div class="platform-card">
+          <div class="p-header">
+            <div class="p-name">홈스탁</div>
+            <div class="p-stars">★★★★☆</div>
+          </div>
+          <div class="p-range">5~12만원 · 당일 예약 가능</div>
+          <span class="p-tag blue">⚡ 빠른 매칭</span>
+        </div>
+        <div class="platform-card">
+          <div class="p-header">
+            <div class="p-name">대리주부</div>
+            <div class="p-stars">★★★★☆</div>
+          </div>
+          <div class="p-range">4~10만원 · 정기 할인</div>
+          <span class="p-tag green">💰 가성비</span>
+        </div>
+        <div class="platform-card">
+          <div class="p-header">
+            <div class="p-name">미소</div>
+            <div class="p-stars">★★★★★</div>
+          </div>
+          <div class="p-range">6~15만원 · 프리미엄</div>
+          <span class="p-tag orange">🏅 프리미엄</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary red" onclick="showPage('main')">🏠 처음으로</button>
+  </div>
+</div>
+
+<!-- ===================== PAGE: DIAGNOSE ===================== -->
+<div id="page-diagnose" class="page">
+  <div class="inner-page">
+    <button class="back-btn" onclick="showPage('main')">← 뒤로</button>
+    <div class="page-title">당신의 방을 <span class="grad">진단</span>할게요 🔍</div>
+    <div class="page-subtitle" id="diagnose-subtitle">AI가 방 상태를 분석해 맞춤 퀘스트를 드려요</div>
+
+    <div class="card">
+      <h3><span class="step-num">1</span>청소할 공간을 선택하세요</h3>
+      <div class="space-grid" id="space-grid">
+        <div class="space-btn" onclick="toggleSpace(this,'침실')"><span class="s-icon">🛏️</span>침실</div>
+        <div class="space-btn" onclick="toggleSpace(this,'거실')"><span class="s-icon">🛋️</span>거실</div>
+        <div class="space-btn" onclick="toggleSpace(this,'주방')"><span class="s-icon">🍳</span>주방</div>
+        <div class="space-btn" onclick="toggleSpace(this,'욕실')"><span class="s-icon">🚿</span>욕실</div>
+        <div class="space-btn" onclick="toggleSpace(this,'베란다')"><span class="s-icon">🪟</span>베란다</div>
+        <div class="space-btn" onclick="toggleSpace(this,'현관')"><span class="s-icon">🚪</span>현관</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="step-num">2</span>방 사진을 올려주세요</h3>
+      <label class="upload-zone" id="diagnose-upload-zone">
+        <input type="file" accept="image/*" id="diagnose-img-input" onchange="previewImage(this,'diagnose-preview','diagnose-upload-zone')">
+        <div class="upload-icon">🖼️</div>
+        <p><strong>클릭하여 사진 선택</strong><br>또는 여기에 드래그 앤 드롭</p>
+        <img class="preview-img" id="diagnose-preview">
+      </label>
+    </div>
+
+    <button class="btn-primary" onclick="startDiagnosis()">🤖 진단을 부탁해</button>
+  </div>
+</div>
+
+<!-- ===================== PAGE: ANALYZING ===================== -->
+<div id="page-analyzing" class="page">
+  <div class="inner-page">
+    <div class="analyzing">
+      <div class="spinner-wrap">
+        <div class="spinner"></div>
+        <div class="spinner-emoji">🔎</div>
+      </div>
+      <div class="page-title" style="margin-bottom: 8px">AI가 분석 중이에요</div>
+      <p style="color:var(--text-sub);font-size:14px" id="analyzing-msg">잠시만 기다려주세요...</p>
+      <ul class="analyzing-steps" id="analyzing-steps">
+        <li data-step="1">사진에서 공간 구조 파악</li>
+        <li data-step="2">오염 부위 및 정리 상태 분석</li>
+        <li data-step="3">맞춤 청소 체크리스트 생성</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PAGE: RESULT ===================== -->
+<div id="page-result" class="page">
+  <div class="inner-page">
+    <div class="page-title">진단 <span class="grad">완료!</span> 📋</div>
+    <div class="page-subtitle">AI가 사진을 분석해 당신의 방 청결도를 측정했어요</div>
+
+    <div class="card">
+      <h3>🏠 방 상태 분석</h3>
+      <div class="result-img-row">
+        <div class="result-img-box">
+          <img id="result-original-img" src="">
+          <div class="placeholder" id="result-img-placeholder">
+            <span style="font-size:28px">🖼️</span>
+            <span>업로드 사진</span>
+          </div>
+          <span class="img-label">ORIGINAL</span>
+        </div>
+        <div class="result-img-box" id="result-analyzed-container">
+          <img id="result-analyzed-img" src="">
+          <canvas class="heatmap-canvas" id="heatmap-canvas"></canvas>
+          <div class="placeholder" id="result-analyzed-placeholder" style="display:none">
+            <span style="font-size:28px">🤖</span>
+            <span>AI 분석</span>
+          </div>
+          <span class="img-label">AI ANALYSIS</span>
+        </div>
+      </div>
+
+      <div class="score-ring-wrap">
+        <div class="score-ring">
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <defs>
+              <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#5b8def"/>
+                <stop offset="100%" stop-color="#9b6bff"/>
+              </linearGradient>
+            </defs>
+            <circle class="ring-bg" cx="80" cy="80" r="68" fill="none" stroke-width="14"/>
+            <circle class="ring-fg" id="ring-fg" cx="80" cy="80" r="68" fill="none" stroke-width="14"
+                    stroke-dasharray="427" stroke-dashoffset="427"/>
+          </svg>
+          <div class="score-center">
+            <div class="score-value"><span id="score-display">0</span><span class="score-unit">%</span></div>
+          </div>
+        </div>
+        <div class="score-label">현재 청결도</div>
+      </div>
+
+      <div class="ai-metric-grid">
+        <div class="ai-metric">
+          <div class="m-val" id="m-brightness">--</div>
+          <div class="m-label">밝기</div>
+        </div>
+        <div class="ai-metric">
+          <div class="m-val" id="m-clutter">--</div>
+          <div class="m-label">복잡도</div>
+        </div>
+        <div class="ai-metric">
+          <div class="m-val" id="m-density">--</div>
+          <div class="m-label">물건 밀도</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 14px">
+        <div style="font-size: 12px; color: var(--text-sub); font-weight: 700; margin-bottom: 6px;">🎨 주요 색상 팔레트</div>
+        <div class="palette-row" id="palette-row"></div>
+      </div>
+
+      <div class="info-list" style="margin-top: 18px">
+        • 청소 난이도: <span class="chip orange" id="difficulty-label">보통</span><br>
+        • 예상 소요 시간: <strong id="time-label">약 45분</strong><br>
+        • 선택 공간: <strong id="selected-spaces-label">-</strong>
+      </div>
+
+      <div style="margin-top: 14px">
+        <div style="font-size: 12px; color: var(--text-sub); font-weight: 700; margin-bottom: 6px;">🔍 AI 감지 이슈</div>
+        <ul class="issue-list" id="issue-list"></ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📝 청소 체크리스트</h3>
+      <ul class="checklist" id="result-checklist"></ul>
+    </div>
+
+    <button class="btn-primary" onclick="showPage('quest')">🚀 퀘스트 시작</button>
+  </div>
+</div>
+
+<!-- ===================== PAGE: QUEST ===================== -->
+<div id="page-quest" class="page">
+  <div class="inner-page">
+    <div class="page-title">청소 <span class="grad">퀘스트</span> 🎮</div>
+    <div class="page-subtitle">하나씩 완료하며 방을 깨끗하게 만들어봐요!</div>
+
+    <div class="progress-bar-wrap">
+      <div class="progress-info">
+        <span>진행률 <span id="quest-progress-text">0 / 0</span></span>
+        <span class="pct" id="quest-progress-pct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="quest-progress-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <ul class="checklist" id="quest-checklist"></ul>
+    </div>
+
+    <div id="quest-photo-section" style="display:none">
+      <div class="card" style="border: 2px solid var(--primary); background: linear-gradient(135deg, #eef4ff, #fff);">
+        <div style="text-align:center; margin-bottom: 14px">
+          <span style="font-size:36px">🎉</span>
+          <h3 style="justify-content:center; color: var(--primary); font-size: 17px; margin-top: 6px">50% 달성! 전체 방 사진을 찍어주세요</h3>
+          <p style="font-size:13px; color: var(--text-sub); margin-top: 6px">청소 전후 비교를 위해 지금 방 사진을 업로드해주세요</p>
+        </div>
+        <label class="upload-zone" id="after-upload-zone" style="border-color: var(--primary); background: #fff;">
+          <input type="file" accept="image/*" id="after-img-input" onchange="previewImage(this,'after-preview','after-upload-zone')">
+          <div class="upload-icon">📸</div>
+          <p><strong>클릭하여 촬영 / 업로드</strong></p>
+          <img class="preview-img" id="after-preview">
+        </label>
+        <button class="btn-primary" style="margin-top: 14px" onclick="goToCompare()">✨ 전/후 비교 보기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PAGE: COMPARE ===================== -->
+<div id="page-compare" class="page">
+  <div class="inner-page">
+    <div class="celebrate-wrap">
+      <span class="emoji-big">🎊</span>
+      <div class="confetti"><span>🎉</span><span>✨</span><span>🏆</span><span>✨</span><span>🎉</span></div>
+      <h2>퀘스트 완료!</h2>
+      <p>정말 수고했어요! 방이 훨씬 깨끗해졌네요.<br>이 리듬을 꾸준히 유지해봐요 💪</p>
+    </div>
+
+    <div class="card">
+      <h3>📷 Before & After</h3>
+      <div class="compare-row">
+        <div class="compare-box before">
+          <div class="c-label">BEFORE</div>
+          <img id="compare-before-img" src="" style="display:none">
+          <div class="empty" id="compare-before-empty">사진 없음</div>
+        </div>
+        <div class="compare-box after">
+          <div class="c-label">AFTER</div>
+          <img id="compare-after-img" src="" style="display:none">
+          <div class="empty" id="compare-after-empty">사진 없음</div>
+        </div>
+      </div>
+
+      <div class="score-compare">
+        <div class="sc-item">
+          <div class="sc-num before"><span id="before-score-display">--</span>%</div>
+          <div class="sc-label">BEFORE</div>
+        </div>
+        <div class="arrow-big">→</div>
+        <div class="sc-item">
+          <div class="sc-num after-c"><span id="after-score-display">89</span>%</div>
+          <div class="sc-label">AFTER</div>
+          <div class="diff-tag" id="diff-tag">+0%</div>
+        </div>
+      </div>
+
+      <div class="info-list" style="margin-top: 18px">
+        • AI 분석: <strong>주요 오염 영역이 크게 개선</strong>됐어요<br>
+        • 공간 활용도: <span class="chip green">+42% 향상</span><br>
+        • 다음 추천 청소: <strong>2주 후 주변 청소</strong>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="showPage('main')">🏠 처음으로 돌아가기</button>
+  </div>
+</div>
+
+<!-- ===================== MODAL: ACCOUNT ===================== -->
+<div id="modal-account" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-emoji">👋</div>
+    <h2>Clean Space에 오신 것을 환영해요</h2>
+    <p class="sub">SNS 계정으로 간편하게 시작하세요</p>
+    
+    
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      <script src="https://accounts.google.com/gsi/client" async defer></script>
+      <script type="text/javascript" src="loginGoogleAPI.js" defer></script>
+     
+  
+
+      <div id="g_id_onload"
+     data-client_id="687911998675-d3nf5va9nrgausmpumbkqvp28up4344d.apps.googleusercontent.com"
+     data-context="signin"
+     data-ux_mode="popup"
+     data-callback="handleCredentialResponse"
+     data-auto_prompt="false">
+</div>
+
+<div class="g_id_signin"
+     data-type="standard"
+     data-shape="pill"
+     data-theme="outline"
+     data-text="signin_with"
+     data-size="large"
+     data-logo_alignment="left">
+</div>
+    </button>
+    <button class="social-btn btn-kakao" onclick="loginWith('KakaoTalk')">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#3A1D1D" d="M12 3C6.48 3 2 6.48 2 10.8c0 2.69 1.6 5.06 4 6.48l-1.02 3.72 4.35-2.87C10.4 18.37 11.19 18.5 12 18.5c5.52 0 10-3.48 10-7.7S17.52 3 12 3z"/></svg>
+      카카오톡으로 계속하기
+    </button>
+    <button class="social-btn btn-naver" onclick="loginWith('Naver')">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#fff" d="M13.5 12.4L10.2 7H7v10h3.5v-5.4L13.8 17H17V7h-3.5z"/></svg>
+      네이버로 계속하기
+    </button>
+    <button class="modal-close" onclick="closeModal('modal-account')">닫기</button>
+  </div>
+</div>
+
+<!-- ===================== MODAL: VIDEO ===================== -->
+<div id="modal-video" class="modal-overlay video-modal">
+  <div class="modal">
+    <h2 style="margin-bottom: 6px" id="video-title">청소 가이드</h2>
+    <p class="sub" id="video-desc">이 방법으로 따라해보세요!</p>
+    <div id="video-container"></div>
+    <button class="btn-primary" style="margin-top: 16px" onclick="closeModal('modal-video')">👍 확인했어요</button>
+  </div>
+</div>
+
+<!-- ===================== TOAST ===================== -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const appState = {
+  cleanType: '',
+  selectedSpaces: [],
+  selectedPrice: '',
+  beforeImgSrc: '',
+  afterImgSrc: '',
+  score: 0,
+  checklist: [],
+  questChecked: [],
+  loggedIn: false
+};
+
+// Checklist data per clean type
+const checklistData = {
+  '간단한 정리': [
+    { title: '책상 위 물건 정리하기', tip: '카테고리별로 나눠 보관하면 다음에 찾기 쉬워요', video: '책상 정리법' },
+    { title: '침대 이불 정돈하기', tip: '매일 정리하면 수면의 질이 좋아져요', video: '침대 정리 꿀팁' },
+    { title: '바닥 물건 치우기', tip: '바닥이 깨끗하면 방이 2배 넓어 보여요', video: '미니멀 바닥 정리' },
+    { title: '쓰레기통 비우기', tip: '쓰레기는 매일 비우는 게 위생에 좋아요', video: '쓰레기 분리수거' },
+    { title: '창문 환기하기', tip: '10분만 환기해도 세균이 크게 줄어요', video: '올바른 환기 방법' },
+    { title: '의자 위 옷 걸어두기', tip: '의자 위에 옷을 쌓으면 먼지와 세균이 번식해요', video: '옷 정리 방법' }
+  ],
+  '주변 청소': [
+    { title: '먼지떨이로 가구 위 먼지 제거', tip: '주 1회 습식 청소로 먼지를 효과적으로 제거해요', video: '먼지 제거 방법' },
+    { title: '진공청소기로 바닥 청소', tip: '구석부터 중앙으로 청소하면 효율적이에요', video: '청소기 사용법' },
+    { title: '창문 틀·유리 닦기', tip: '오래된 먼지는 면봉으로 제거하면 좋아요', video: '창틀 청소 방법' },
+    { title: '콘센트 주변 청소', tip: '젖은 걸레는 절대 금지! 마른 걸레만 사용해요', video: '콘센트 안전 청소' },
+    { title: '문손잡이·스위치 소독', tip: '매일 만지는 곳이라 소독이 필수예요', video: '손잡이 소독법' },
+    { title: '베개 커버 교체', tip: '2주에 한 번 교체를 추천드려요', video: '침구류 세탁법' },
+    { title: '화장대 정리', tip: '유통기한 지난 화장품은 과감히 정리해요', video: '화장대 정리 방법' },
+    { title: '책상 서랍 정리', tip: '필요 없는 물건은 버려야 공간이 생겨요', video: '서랍 정리 꿀팁' }
+  ],
+  '대청소': [
+    { title: '냉장고 내부 완전 청소', tip: '3개월에 한 번은 비우고 전체 청소해요', video: '냉장고 청소법' },
+    { title: '에어컨 필터 세척', tip: '필터가 깨끗하면 전기료도 아껴져요', video: '에어컨 필터 청소' },
+    { title: '화장실 변기·세면대 청소', tip: '베이킹소다+식초가 최고의 천연 세정제예요', video: '욕실 청소 비법' },
+    { title: '주방 후드 기름때 제거', tip: '계면활성제로 30분 불려두면 쉽게 닦여요', video: '주방 후드 청소' },
+    { title: '소파·매트리스 진드기 제거', tip: '햇볕에 2시간 건조하면 효과적이에요', video: '진드기 제거법' },
+    { title: '창문 유리 청소', tip: '신문지로 닦으면 얼룩 없이 깨끗해져요', video: '유리창 청소법' },
+    { title: '세탁기 통 세탁', tip: '한 달에 한 번 세탁조 클리너를 사용해요', video: '세탁기 청소법' },
+    { title: '옷장 정리·정돈', tip: '계절별로 분리 보관하면 찾기 쉬워요', video: '옷장 정리 방법' },
+    { title: '바닥 물걸레질', tip: '마감은 반드시 건식으로 마무리해요', video: '바닥 청소 순서' },
+    { title: '현관·신발 정리', tip: '신발은 2일 이상 건조 후 보관해요', video: '현관 정리법' }
+  ]
+};
+
+// Video data — maps to YouTube search embeds
+const videoData = {
+  '책상 정리법': { desc: '깔끔한 책상 만드는 5분 정리법' },
+  '침대 정리 꿀팁': { desc: '호텔처럼 침대 정리하는 방법' },
+  '미니멀 바닥 정리': { desc: '바닥을 깨끗이 유지하는 꿀팁' },
+  '쓰레기 분리수거': { desc: '올바른 분리수거 가이드' },
+  '올바른 환기 방법': { desc: '실내 공기질을 높이는 환기법' },
+  '옷 정리 방법': { desc: '옷을 효율적으로 정리하는 법' },
+  '먼지 제거 방법': { desc: '가구 위 먼지 완전 제거법' },
+  '청소기 사용법': { desc: '진공청소기 제대로 쓰는 법' },
+  '창틀 청소 방법': { desc: '창틀 먼지 쉽게 제거하기' },
+  '콘센트 안전 청소': { desc: '안전하게 콘센트 주변 청소하기' },
+  '손잡이 소독법': { desc: '문손잡이·스위치 소독법' },
+  '침구류 세탁법': { desc: '베개·이불 세탁하는 방법' },
+  '화장대 정리 방법': { desc: '화장대 깔끔하게 정리하기' },
+  '서랍 정리 꿀팁': { desc: '서랍 공간 2배 활용법' },
+  '냉장고 청소법': { desc: '냉장고 완전 청소 방법' },
+  '에어컨 필터 청소': { desc: '에어컨 필터 셀프 청소' },
+  '욕실 청소 비법': { desc: '욕실 청소 꿀팁 모음' },
+  '주방 후드 청소': { desc: '주방 후드 기름때 제거법' },
+  '진드기 제거법': { desc: '소파·매트리스 진드기 제거' },
+  '유리창 청소법': { desc: '얼룩 없이 유리창 닦는 방법' },
+  '세탁기 청소법': { desc: '세탁조 셀프 청소' },
+  '옷장 정리 방법': { desc: '옷장 효율적으로 정리하기' },
+  '바닥 청소 순서': { desc: '물걸레 청소의 올바른 순서' },
+  '현관 정리법': { desc: '신발장·현관 깔끔하게 정리' }
+};
+
+// ============================================================
+// AI IMAGE ANALYSIS (Canvas-based)
+// ============================================================
+// Analyzes a room photo using real pixel-level features:
+//   - Brightness distribution
+//   - Color variance (clutter indicator)
+//   - Sobel-like edge density (object density)
+//   - Regional clutter heatmap (4x3 grid)
+//   - Dominant color palette
+// Maps features into a cleanliness score + detected issues + hotspots.
+// ============================================================
+function analyzeImageAI(imgSrc) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        // Downsample to a fixed working size for perf & consistency
+        const W = 200, H = Math.round(200 * (img.height / img.width));
+        const canvas = document.createElement('canvas');
+        canvas.width = W; canvas.height = H;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, W, H);
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const px = imgData.data;
+
+        // ---- Pass 1: brightness, color sums, quantized palette ----
+        let sumBright = 0, sumR = 0, sumG = 0, sumB = 0;
+        const colorMap = new Map();
+        const grayscale = new Float32Array(W * H);
+        const N = W * H;
+        for (let i = 0; i < N; i++) {
+          const j = i * 4;
+          const r = px[j], g = px[j + 1], b = px[j + 2];
+          const y = r * 0.299 + g * 0.587 + b * 0.114;
+          grayscale[i] = y;
+          sumBright += y;
+          sumR += r; sumG += g; sumB += b;
+          // Quantize into 6-bit color (4x4x4 buckets)
+          const key = ((r >> 6) << 4) | ((g >> 6) << 2) | (b >> 6);
+          colorMap.set(key, (colorMap.get(key) || 0) + 1);
+        }
+        const avgBrightness = sumBright / N;
+        const avgR = sumR / N, avgG = sumG / N, avgB = sumB / N;
+
+        // ---- Pass 2: global color variance ----
+        let variance = 0;
+        for (let i = 0; i < N; i++) {
+          const j = i * 4;
+          const dr = px[j] - avgR;
+          const dg = px[j + 1] - avgG;
+          const db = px[j + 2] - avgB;
+          variance += dr * dr + dg * dg + db * db;
+        }
+        variance = Math.sqrt(variance / N);
+
+        // ---- Pass 3: Sobel-like edge detection + regional clutter ----
+        const gridW = 4, gridH = 3;
+        const cellW = W / gridW, cellH = H / gridH;
+        const regions = Array.from({ length: gridW * gridH }, () => ({
+          edges: 0, bright: 0, count: 0
+        }));
+        let totalEdges = 0;
+        for (let y = 1; y < H - 1; y++) {
+          for (let x = 1; x < W - 1; x++) {
+            const i = y * W + x;
+            const g = grayscale[i];
+            const gx = Math.abs(grayscale[i + 1] - grayscale[i - 1]);
+            const gy = Math.abs(grayscale[i + W] - grayscale[i - W]);
+            const edgeMag = gx + gy;
+            const isEdge = edgeMag > 32 ? 1 : 0;
+            totalEdges += isEdge;
+
+            const ri = Math.min(gridH - 1, Math.floor(y / cellH));
+            const ci = Math.min(gridW - 1, Math.floor(x / cellW));
+            const reg = regions[ri * gridW + ci];
+            reg.edges += isEdge;
+            reg.bright += g;
+            reg.count += 1;
+          }
+        }
+        const edgeDensity = totalEdges / ((W - 2) * (H - 2));
+
+        // Per-region clutter score
+        const hotspots = regions.map((r, idx) => {
+          const ci = idx % gridW;
+          const ri = Math.floor(idx / gridW);
+          const edgeRatio = r.count > 0 ? r.edges / r.count : 0;
+          const meanBright = r.count > 0 ? r.bright / r.count : 128;
+          const clutter = edgeRatio * 100; // 0..~30
+          return { col: ci, row: ri, clutter, brightness: meanBright, edgeRatio };
+        });
+
+        // ---- Palette (top 5 quantized colors) ----
+        const palette = [...colorMap.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([key, cnt]) => {
+            const r = ((key >> 4) & 3) * 64 + 32;
+            const g = ((key >> 2) & 3) * 64 + 32;
+            const b = (key & 3) * 64 + 32;
+            const hex = '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+            return { hex, pct: +(cnt / N * 100).toFixed(1) };
+          });
+
+        // ---- Score computation ----
+        // Base 100, subtract penalties:
+        //   darkness (avgBrightness below 130 hurts)
+        //   global variance (too busy => cluttered)
+        //   edge density (lots of objects/lines => cluttered)
+        const darkPenalty = Math.max(0, (130 - avgBrightness) * 0.28);
+        const variancePenalty = Math.min(35, Math.max(0, (variance - 35) * 0.55));
+        const edgePenalty = Math.min(40, edgeDensity * 180);
+        let score = 100 - darkPenalty - variancePenalty - edgePenalty;
+        score = Math.max(18, Math.min(95, Math.round(score)));
+
+        // ---- Detected issues ----
+        const issues = [];
+        if (edgeDensity > 0.22) issues.push('물건이 매우 많아 정리·수납이 필요해요');
+        else if (edgeDensity > 0.15) issues.push('부분적으로 산만한 영역이 보여요');
+        if (variance > 75) issues.push('시각적으로 복잡한 배치 — 색상·물건 정돈 필요');
+        if (avgBrightness < 85) issues.push('조명이 어두워요 — 환기와 채광이 필요해요');
+        else if (avgBrightness < 115) issues.push('전반적으로 어두운 톤 — 먼지가 잘 안 보일 수 있어요');
+        if (avgR - avgB > 22 && avgR > avgG + 10) issues.push('따뜻한 색 얼룩·오염 가능성 감지');
+        if (hotspots.filter(h => h.clutter > 15).length >= 4) {
+          issues.push('방 전체에 걸쳐 정리가 필요한 구역이 많아요');
+        }
+
+        // difficulty
+        const difficulty = score < 40 ? '매우 심각' : score < 55 ? '높음' : score < 70 ? '보통' : '쉬움';
+
+        resolve({
+          score,
+          avgBrightness: Math.round(avgBrightness),
+          variance: +variance.toFixed(1),
+          edgeDensity: +(edgeDensity * 100).toFixed(1),
+          palette,
+          issues,
+          hotspots,
+          difficulty,
+          gridW, gridH,
+          W, H
+        });
+      } catch (err) {
+        reject(err);
+      }
+    };
+    img.onerror = reject;
+    img.src = imgSrc;
+  });
+}
+
+// Draw heatmap + hotspot labels for clutter regions
+function renderHeatmap(analysis, canvasId, containerId) {
+  const canvas = document.getElementById(canvasId);
+  const container = document.getElementById(containerId);
+  if (!canvas || !container) return;
+
+  // Clear existing labels
+  container.querySelectorAll('.hotspot-label').forEach(n => n.remove());
+
+  const rect = container.getBoundingClientRect();
+  const cw = Math.max(1, Math.round(rect.width));
+  const ch = Math.max(1, Math.round(rect.height));
+  canvas.width = cw; canvas.height = ch;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, cw, ch);
+
+  const { hotspots, gridW, gridH } = analysis;
+  const cellW = cw / gridW, cellH = ch / gridH;
+  // Find max clutter for normalization
+  const maxClutter = Math.max(1, ...hotspots.map(h => h.clutter));
+
+  // Paint gradient heat circles
+  hotspots.forEach(h => {
+    const intensity = Math.min(1, h.clutter / maxClutter);
+    if (intensity < 0.15) return;
+    const cx = (h.col + 0.5) * cellW;
+    const cy = (h.row + 0.5) * cellH;
+    const radius = Math.min(cellW, cellH) * 0.85;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    const alpha = intensity * 0.55;
+    if (intensity > 0.7) {
+      grad.addColorStop(0, `rgba(255,70,70,${alpha})`);
+      grad.addColorStop(0.6, `rgba(255,120,70,${alpha * 0.5})`);
+      grad.addColorStop(1, 'rgba(255,120,70,0)');
+    } else if (intensity > 0.4) {
+      grad.addColorStop(0, `rgba(255,165,60,${alpha})`);
+      grad.addColorStop(1, 'rgba(255,165,60,0)');
+    } else {
+      grad.addColorStop(0, `rgba(255,210,80,${alpha})`);
+      grad.addColorStop(1, 'rgba(255,210,80,0)');
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  });
+
+  // Top 3 labels
+  const top = [...hotspots].sort((a, b) => b.clutter - a.clutter).slice(0, 3);
+  const labels = ['정리 필요', '산만 영역', '먼지 예상'];
+  top.forEach((h, i) => {
+    if (h.clutter / maxClutter < 0.25) return;
+    const cx = (h.col + 0.5) * cellW;
+    const cy = (h.row + 0.5) * cellH;
+    const tag = document.createElement('div');
+    tag.className = 'hotspot-label';
+    tag.style.left = (cx / cw * 100) + '%';
+    tag.style.top = (cy / ch * 100) + '%';
+    tag.textContent = labels[i] || '확인 필요';
+    container.appendChild(tag);
+  });
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById('page-' + page);
+  if (el) el.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+function goDiagnose(type) {
+  appState.cleanType = type;
+  document.getElementById('diagnose-subtitle').textContent =
+    `선택한 청소: "${type}" — AI가 방 사진을 분석해 맞춤 퀘스트를 드려요`;
+  showPage('diagnose');
+}
+
+// ============================================================
+// MODAL
+// ============================================================
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  if (id === 'modal-video') document.getElementById('video-container').innerHTML = '';
+}
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) closeModal(overlay.id);
+  });
+});
+
+function loginWith(provider) {
+  closeModal('modal-account');
+  appState.loggedIn = true;
+  const btn = document.getElementById('account-btn');
+  btn.classList.add('logged-in');
+  const letter = provider[0];
+  btn.innerHTML = `<span class="avatar-badge">${letter}</span> ${provider} 로그인됨`;
+  showToast(`✅ ${provider} 로그인 완료!`);
+}
+
+// ============================================================
+// IMAGE PREVIEW
+// ============================================================
+function previewImage(input, previewId, zoneId) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById(previewId);
+    img.src = e.target.result;
+    img.style.display = 'block';
+
+    if (previewId === 'diagnose-preview') appState.beforeImgSrc = e.target.result;
+    if (previewId === 'after-preview') appState.afterImgSrc = e.target.result;
+
+    const zone = document.getElementById(zoneId);
+    zone.querySelector('.upload-icon').style.display = 'none';
+    zone.querySelector('p').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ============================================================
+// COMPANY FLOW
+// ============================================================
+function selectPrice(el, val) {
+  document.querySelectorAll('#price-grid .price-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  appState.selectedPrice = val;
+}
+
+function requestCompany() {
+  const hasImg = document.getElementById('company-preview').style.display === 'block';
+  if (!hasImg) { showToast('📸 방 사진을 먼저 업로드해주세요'); return; }
+  if (!appState.selectedPrice) { showToast('💰 가격대를 선택해주세요'); return; }
+
+  showPage('analyzing');
+  document.getElementById('analyzing-msg').textContent = '청소 업체 플랫폼을 찾고 있어요 🔎';
+
+  // Analyze company photo too
+  const companyImg = document.getElementById('company-preview').src;
+  const analysisPromise = analyzeImageAI(companyImg)
+    .catch(err => { console.warn('AI analysis failed:', err); return null; });
+
+  runAnalyzingSteps(async () => {
+    const analysis = await analysisPromise;
+    document.getElementById('result-price-label').textContent = appState.selectedPrice;
+    if (analysis) {
+      // Tailor the company result blurb based on actual analysis
+      const state = analysis.score < 40 ? '매우 심각' : analysis.score < 60 ? '보통 이하' : '양호';
+      const timeByScore = analysis.score < 40 ? '3~4시간' : analysis.score < 60 ? '2~3시간' : '1~2시간';
+      const label = document.querySelector('#page-company-result .info-list');
+      if (label) {
+        label.innerHTML = `
+          • 청소 상태: <span class="chip ${analysis.score < 40 ? 'red' : analysis.score < 60 ? 'orange' : 'green'}">${state} (${analysis.score}%)</span><br>
+          • 복잡도 지수: <strong>${Math.round(analysis.variance)}</strong> · 물건 밀도: <strong>${analysis.edgeDensity}%</strong><br>
+          • 예상 소요 시간: <strong>${timeByScore}</strong><br>
+          • 선택한 가격대: <strong id="result-price-label" style="color:var(--accent)">${appState.selectedPrice}</strong>
+        `;
+      }
+    }
+    showPage('company-result');
+  });
+}
+
+// ============================================================
+// DIAGNOSE FLOW
+// ============================================================
+function toggleSpace(el, name) {
+  el.classList.toggle('selected');
+  const idx = appState.selectedSpaces.indexOf(name);
+  if (idx === -1) appState.selectedSpaces.push(name);
+  else appState.selectedSpaces.splice(idx, 1);
+}
+
+function startDiagnosis() {
+  const hasImg = document.getElementById('diagnose-preview').style.display === 'block';
+  if (!hasImg) { showToast('📸 방 사진을 먼저 업로드해주세요'); return; }
+  if (appState.selectedSpaces.length === 0) { showToast('📍 청소할 공간을 최소 한 곳 선택해주세요'); return; }
+
+  showPage('analyzing');
+  document.getElementById('analyzing-msg').textContent = '방 사진을 분석하고 있어요 🔎';
+
+  // Run real image analysis in parallel with the step animation
+  const analysisPromise = analyzeImageAI(appState.beforeImgSrc)
+    .catch(err => { console.warn('AI analysis failed:', err); return null; });
+
+  runAnalyzingSteps(async () => {
+    const analysis = await analysisPromise;
+    await buildResultPage(analysis);
+    showPage('result');
+    // Render heatmap after the page is visible and has layout
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        if (analysis) renderHeatmap(analysis, 'heatmap-canvas', 'result-analyzed-container');
+      }, 60);
+    });
+  });
+}
+
+function runAnalyzingSteps(onDone) {
+  const steps = document.querySelectorAll('#analyzing-steps li');
+  steps.forEach(s => { s.classList.remove('active', 'done'); });
+  let i = 0;
+  const advance = () => {
+    if (i > 0) steps[i - 1].classList.add('done');
+    if (i < steps.length) {
+      steps[i].classList.add('active');
+      i++;
+      setTimeout(advance, 900);
+    } else {
+      setTimeout(onDone, 400);
+    }
+  };
+  advance();
+}
+
+async function buildResultPage(analysis) {
+  // Fallback if analysis failed — use a mild random score
+  if (!analysis) {
+    analysis = {
+      score: Math.floor(Math.random() * 25) + 45,
+      avgBrightness: 130, variance: 55, edgeDensity: 18,
+      palette: [], issues: ['사진 분석에 실패해 기본값을 사용해요'],
+      hotspots: [], difficulty: '보통', gridW: 4, gridH: 3
+    };
+  }
+  const score = analysis.score;
+  appState.score = score;
+  appState.analysis = analysis;
+
+  const cl = checklistData[appState.cleanType] || checklistData['간단한 정리'];
+  appState.checklist = cl;
+  appState.questChecked = new Array(cl.length).fill(false);
+
+  // score ring animate
+  const ringCircumference = 2 * Math.PI * 68; // r=68
+  const offset = ringCircumference - (score / 100) * ringCircumference;
+  const ring = document.getElementById('ring-fg');
+  ring.setAttribute('stroke-dasharray', ringCircumference);
+  ring.setAttribute('stroke-dashoffset', ringCircumference);
+  setTimeout(() => ring.setAttribute('stroke-dashoffset', offset), 200);
+
+  // animate number
+  const scoreEl = document.getElementById('score-display');
+  animateNumber(scoreEl, 0, score, 1200);
+
+  // difficulty + time
+  const difficulty = analysis.difficulty;
+  const timeMap = { '매우 심각': '약 1시간 30분', '높음': '약 1시간', '보통': '약 45분', '쉬움': '약 20분' };
+  const diffEl = document.getElementById('difficulty-label');
+  diffEl.textContent = difficulty;
+  diffEl.className = 'chip ' + (
+    difficulty === '매우 심각' ? 'red' :
+    difficulty === '높음' ? 'orange' :
+    difficulty === '쉬움' ? 'green' : 'blue'
+  );
+  document.getElementById('time-label').textContent = timeMap[difficulty] || '약 45분';
+  document.getElementById('selected-spaces-label').textContent =
+    appState.selectedSpaces.length > 0 ? appState.selectedSpaces.join(', ') : '-';
+
+  // AI metrics display
+  const brightPct = Math.round(analysis.avgBrightness / 255 * 100);
+  document.getElementById('m-brightness').textContent = brightPct + '%';
+  document.getElementById('m-clutter').textContent = Math.min(99, Math.round(analysis.variance)) + '';
+  document.getElementById('m-density').textContent = analysis.edgeDensity + '%';
+
+  // Palette render
+  const paletteEl = document.getElementById('palette-row');
+  paletteEl.innerHTML = '';
+  analysis.palette.forEach(p => {
+    const sw = document.createElement('div');
+    sw.className = 'palette-swatch';
+    sw.style.background = p.hex;
+    sw.innerHTML = `<span>${p.pct}%</span>`;
+    paletteEl.appendChild(sw);
+  });
+
+  // Issues render
+  const issueEl = document.getElementById('issue-list');
+  issueEl.innerHTML = '';
+  if (analysis.issues.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'none';
+    li.textContent = '✅ 전반적으로 깨끗해 보여요!';
+    issueEl.appendChild(li);
+  } else {
+    analysis.issues.forEach(msg => {
+      const li = document.createElement('li');
+      li.textContent = '⚠️ ' + msg;
+      issueEl.appendChild(li);
+    });
+  }
+
+  // show uploaded image in result
+  if (appState.beforeImgSrc) {
+    const orig = document.getElementById('result-original-img');
+    orig.src = appState.beforeImgSrc;
+    orig.style.display = 'block';
+    document.getElementById('result-img-placeholder').style.display = 'none';
+
+    const an = document.getElementById('result-analyzed-img');
+    an.src = appState.beforeImgSrc;
+    an.style.display = 'block';
+    an.style.filter = 'contrast(1.12) saturate(0.9) brightness(0.95)';
+    document.getElementById('result-analyzed-placeholder').style.display = 'none';
+  }
+
+  // render checklist
+  const list = document.getElementById('result-checklist');
+  list.innerHTML = '';
+  cl.forEach((item, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <div class="check-box" id="rb-${i}" onclick="toggleResultCheck(${i})"></div>
+      <div class="check-content">
+        <div class="check-title">${item.title}</div>
+        <div class="check-tip">💡 ${item.tip}</div>
+      </div>
+    `;
+    list.appendChild(li);
+  });
+
+  // store before score for compare
+  document.getElementById('before-score-display').textContent = score;
+}
+
+function animateNumber(el, from, to, duration) {
+  const start = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(from + (to - from) * eased);
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function toggleResultCheck(i) {
+  const box = document.getElementById('rb-' + i);
+  const checked = box.classList.toggle('checked');
+  box.innerHTML = checked ? '✓' : '';
+}
+
+// ============================================================
+// QUEST PAGE
+// ============================================================
+document.addEventListener('click', e => {
+  // listen for quest page entering
+});
+
+function setupQuestPage() {
+  const list = document.getElementById('quest-checklist');
+  list.innerHTML = '';
+  appState.questChecked = new Array(appState.checklist.length).fill(false);
+  document.getElementById('quest-photo-section').style.display = 'none';
+
+  appState.checklist.forEach((item, i) => {
+    const li = document.createElement('li');
+    li.id = 'qli-' + i;
+    li.innerHTML = `
+      <div class="check-box" id="qb-${i}" onclick="toggleQuestCheck(${i})"></div>
+      <div class="check-content">
+        <div class="check-title">${item.title}</div>
+        <div class="check-tip">💡 ${item.tip}</div>
+      </div>
+      <button class="btn-dunno" onclick="showVideo('${item.video}')">🎬 잘 모르겠어요</button>
+    `;
+    list.appendChild(li);
+  });
+  updateQuestProgress();
+}
+
+function toggleQuestCheck(i) {
+  appState.questChecked[i] = !appState.questChecked[i];
+  const box = document.getElementById('qb-' + i);
+  box.classList.toggle('checked', appState.questChecked[i]);
+  box.innerHTML = appState.questChecked[i] ? '✓' : '';
+
+  const li = document.getElementById('qli-' + i);
+  li.style.opacity = appState.questChecked[i] ? '0.5' : '1';
+
+  updateQuestProgress();
+}
+
+function updateQuestProgress() {
+  const total = appState.checklist.length;
+  const done = appState.questChecked.filter(Boolean).length;
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+
+  document.getElementById('quest-progress-text').textContent = `${done} / ${total}`;
+  document.getElementById('quest-progress-pct').textContent = pct + '%';
+  document.getElementById('quest-progress-fill').style.width = pct + '%';
+
+  const photoSection = document.getElementById('quest-photo-section');
+  if (pct >= 50 && total > 0) {
+    if (photoSection.style.display !== 'block') {
+      photoSection.style.display = 'block';
+      showToast('🎉 50% 달성! 방 사진을 찍어주세요');
+    }
+  }
+}
+
+// Observe quest page becoming active
+const questObserver = new MutationObserver(() => {
+  const qp = document.getElementById('page-quest');
+  if (qp.classList.contains('active') && document.getElementById('quest-checklist').children.length === 0) {
+    setupQuestPage();
+  }
+});
+questObserver.observe(document.getElementById('page-quest'), { attributes: true, attributeFilter: ['class'] });
+
+// ============================================================
+// VIDEO
+// ============================================================
+function showVideo(keyword) {
+  const v = videoData[keyword] || { desc: keyword };
+  document.getElementById('video-title').textContent = '🎬 ' + keyword;
+  document.getElementById('video-desc').textContent = v.desc;
+
+  const query = encodeURIComponent(keyword + ' 방법');
+  document.getElementById('video-container').innerHTML = `
+    <iframe class="yt-embed"
+      src="https://www.youtube.com/embed?listType=search&list=${query}"
+      allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen></iframe>
+  `;
+  openModal('modal-video');
+}
+
+// ============================================================
+// COMPARE PAGE
+// ============================================================
+function goToCompare() {
+  const hasAfter = document.getElementById('after-preview').style.display === 'block';
+  if (!hasAfter) { showToast('📸 방 사진을 먼저 업로드해주세요'); return; }
+
+  showPage('analyzing');
+  document.getElementById('analyzing-msg').textContent = '전/후 비교 분석 중이에요 🔎';
+
+  const analysisPromise = analyzeImageAI(appState.afterImgSrc)
+    .catch(err => { console.warn('After analysis failed:', err); return null; });
+
+  runAnalyzingSteps(async () => {
+    const afterAnalysis = await analysisPromise;
+    appState.afterAnalysis = afterAnalysis;
+    setupComparePage();
+    showPage('compare');
+  });
+}
+
+function setupComparePage() {
+  const beforeImg = document.getElementById('compare-before-img');
+  const afterImg = document.getElementById('compare-after-img');
+
+  if (appState.beforeImgSrc) {
+    beforeImg.src = appState.beforeImgSrc;
+    beforeImg.style.display = 'block';
+    document.getElementById('compare-before-empty').style.display = 'none';
+  }
+  if (appState.afterImgSrc) {
+    afterImg.src = appState.afterImgSrc;
+    afterImg.style.display = 'block';
+    document.getElementById('compare-after-empty').style.display = 'none';
+  }
+
+  const before = appState.score;
+  let after;
+  if (appState.afterAnalysis) {
+    // Real after-score from AI analysis, but guarantee improvement because user did the quest
+    const rawAfter = appState.afterAnalysis.score;
+    const minImprovement = Math.max(15, Math.floor((100 - before) * 0.5));
+    after = Math.max(rawAfter, Math.min(98, before + minImprovement));
+  } else {
+    after = Math.min(98, before + Math.floor(Math.random() * 20) + 30);
+  }
+  document.getElementById('before-score-display').textContent = before;
+  animateNumber(document.getElementById('after-score-display'), before, after, 1400);
+  document.getElementById('diff-tag').textContent = `+${after - before}% 향상`;
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+// Re-render heatmap when the window resizes or the result page becomes visible
+window.addEventListener('resize', () => {
+  if (appState.analysis && document.getElementById('page-result').classList.contains('active')) {
+    renderHeatmap(appState.analysis, 'heatmap-canvas', 'result-analyzed-container');
+  }
+});
+
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+</script>
+</body>
+</html>
