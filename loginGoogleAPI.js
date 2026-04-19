@@ -13,6 +13,26 @@ window.handleCredentialResponse = function (response) {
 	sendforwardGooglelogin(responsePayload.name, responsePayload.email)
 }
 
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDvdMirJlbehMiYGoeq2yQuCRaj737NJTo",
+    authDomain: "clean-space-52003.firebaseapp.com",
+    projectId: "clean-space-52003",
+    storageBucket: "clean-space-52003.firebasestorage.app",
+    messagingSenderId: "768574910086",
+    appId: "1:768574910086:web:56ad65dfbabca680866b07"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+</script>
+
 function decodeJwtResponse(id_token) {
 	console.log('decodeJwtResponse 호출');
 	//받아온 토큰 값을 디코딩하여 정보 전송
