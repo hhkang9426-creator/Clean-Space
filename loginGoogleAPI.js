@@ -28,36 +28,16 @@ function decodeJwtResponse(id_token) {
 	//최종적으로 JSON 타입으로 변환해 반환
 	return JSON.parse(jsonPayload);
 }
-function sendforwardGooglelogin(fullname, email) {
-    //새로운 폼 요소 생성합니다.
-    let googleloginForm = document.createElement("form");
-	googleloginForm.style.display = "none";
-    googleloginForm.method = "POST"; // POST 요청 방식
-    googleloginForm.action = "login.do"; // 요청을 보낼 URL
-
-    //이름 값을 보낼 input태그 만들기
-    let nameField = document.createElement("input");
-    nameField.type = "hidden"; // 폼에 표시되지 않도록 숨김 필드로 설정
-    nameField.name = "name"; // 서버에서 받을 변수 이름
-    nameField.value = fullname; // 보낼 데이터
-
-    //이메일값을 보낼 input태그 만들기
-    let emailField = document.createElement("input");
-    emailField.type = "hidden";
-    emailField.name = "email";
-    emailField.value = email;
-	
-    //구글 로그인임을 알려줄 input태그 만들기
-    let typeField = document.createElement("input");
-    typeField.type = "hidden";
-    typeField.name = "type";
-    typeField.value = "googleLogin";
-
-	//만든 input태그를 form에 추가합니다.
-    googleloginForm.appendChild(nameField);
-    googleloginForm.appendChild(emailField);
-    googleloginForm.appendChild(typeField);
-    //폼을 현재 페이지에 추가한 후 전송합니다.
-    document.body.appendChild(googleloginForm);
-    googleloginForm.submit(); 
-}
+window.handleCredentialResponse = function (response) {
+    console.log('handleCredentialResponse 호출');
+    
+    const responsePayload = decodeJwtResponse(response.credential);
+    
+    console.log('Full Name: ' + responsePayload.name);
+    console.log('Email: ' + responsePayload.email);
+    
+    // 서버로 전송 (서버 준비되면 주석 해제)
+    // sendforwardGooglelogin(responsePayload.name, responsePayload.email);
+    
+    alert(`로그인 성공!\n이름: ${responsePayload.name}\n이메일: ${responsePayload.email}`);
+};
