@@ -16,7 +16,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
-    // 본인의 설정값
+   apiKey: "AIzaSyDvdMirJlbehMiYGoeq2yQuCRaj737NJTo",
+    authDomain: "clean-space-52003.firebaseapp.com",
+    projectId: "clean-space-52003",
+    storageBucket: "clean-space-52003.firebasestorage.app",
+    messagingSenderId: "768574910086",
+    appId: "1:768574910086:web:56ad65dfbabca680866b07"
 };
 
 const app = initializeApp(firebaseConfig);
