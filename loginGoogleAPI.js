@@ -1,4 +1,3 @@
-// Firebase 모듈 import (CDN 사용)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
     getAuth, 
@@ -7,57 +6,78 @@ import {
     signOut,
     onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+// ⬇️ Firestore 관련 추가
+import { 
+    getFirestore, 
+    doc, 
+    setDoc, 
+    getDoc,
+    serverTimestamp 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// Firebase 설정 (2단계에서 복사한 거 여기 붙여넣기)
 const firebaseConfig = {
-    apiKey: "AIzaSyDvdMirJlbehMiYGoeq2yQuCRaj737NJTo",
-    authDomain: "clean-space-52003.firebaseapp.com",
-    projectId: "clean-space-52003",
-    storageBucket: "clean-space-52003.firebasestorage.app",
-    messagingSenderId: "768574910086",
-    appId: "1:768574910086:web:56ad65dfbabca680866b07"
-  };
+    // 본인의 설정값
+};
 
-// Firebase 초기화
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);  // ⬅️ Firestore 인스턴스
 const provider = new GoogleAuthProvider();
 
-// 로그인 버튼
+// 구글 로그인
 document.getElementById('googleLoginBtn').addEventListener('click', () => {
     signInWithPopup(auth, provider)
-        .then((result) => {
+        .then(async (result) => {
             const user = result.user;
+            
+            // ⬇️ Firestore에 사용자 정보 저장
+            await saveUserToFirestore(user, 'google');
+            
             console.log('로그인 성공!');
-            console.log('이름:', user.displayName);
-            console.log('이메일:', user.email);
-            console.log('프로필 사진:', user.photoURL);
-            console.log('UID:', user.uid);  // Firebase가 준 고유 ID
         })
         .catch((error) => {
             console.error('로그인 실패:', error.message);
         });
 });
 
-// 로그아웃 버튼
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    signOut(auth)
-        .then(() => {
-            console.log('로그아웃 완료');
-        })
-        .catch((error) => {
-            console.error('로그아웃 실패:', error);
+// 사용자 정보를 Firestore에 저장하는 함수
+async function saveUserToFirestore(user, provider) {
+    const userRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userRef);
+    
+    if (!userSnap.exists()) {
+        // 첫 로그인: 새 사용자 등록
+        await setDoc(userRef, {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+            provider: provider,  // 'google', 'kakao', 'naver' 등
+            createdAt: serverTimestamp(),
+            lastLoginAt: serverTimestamp()
         });
+        console.log('새 사용자 등록:', user.displayName);
+    } else {
+        // 재방문: 마지막 로그인 시간만 업데이트
+        await setDoc(userRef, {
+            lastLoginAt: serverTimestamp()
+        }, { merge: true });
+        console.log('기존 사용자:', user.displayName);
+    }
+}
+
+// 로그아웃
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    signOut(auth);
 });
 
-// 로그인 상태 감지 (자동 실행)
+// 로그인 상태 감지
 onAuthStateChanged(auth, (user) => {
     const loginBtn = document.getElementById('googleLoginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const userInfo = document.getElementById('userInfo');
     
     if (user) {
-        // 로그인 상태
         loginBtn.style.display = 'none';
         logoutBtn.style.display = 'inline-block';
         userInfo.innerHTML = `
@@ -66,7 +86,6 @@ onAuthStateChanged(auth, (user) => {
             <p>${user.email}</p>
         `;
     } else {
-        // 로그아웃 상태
         loginBtn.style.display = 'inline-block';
         logoutBtn.style.display = 'none';
         userInfo.innerHTML = '';
